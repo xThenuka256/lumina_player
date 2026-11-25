@@ -214,11 +214,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
         children: [
           SpringPressable(
             onTap: () => Navigator.of(context).pop(),
-            child: LiquidGlassContainer(
+            child: const LiquidGlassContainer(
               borderRadius: 16,
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               elevationShadow: false,
-              child: const Icon(Icons.keyboard_arrow_down_rounded, size: 24),
+              child: Icon(Icons.keyboard_arrow_down_rounded, size: 24),
             ),
           ),
           const Spacer(),
@@ -258,11 +258,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
           const SizedBox(width: 10),
           SpringPressable(
             onTap: () => QueueGlassDrawer.show(context),
-            child: LiquidGlassContainer(
+            child: const LiquidGlassContainer(
               borderRadius: 16,
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               elevationShadow: false,
-              child: const Icon(Icons.queue_music_rounded, size: 22),
+              child: Icon(Icons.queue_music_rounded, size: 22),
             ),
           ),
         ],

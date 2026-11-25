@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:lumina_player/core/storage/library_database.dart';
 import 'package:lumina_player/features/library/domain/track.dart';
 
