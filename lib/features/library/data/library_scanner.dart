@@ -63,12 +63,20 @@ class LibraryScanner {
   /// Prompts user to choose a folder (SAF on Android 11+, native portal on Linux)
   /// and registers it in SQLite watched folders.
   Future<String?> pickAndAddFolder() async {
-    final selected = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Select Music Folder',
-    );
-    if (selected == null || selected.isEmpty) return null;
-    await LibraryDatabase.instance.addFolderRule(selected, 'watched');
-    return selected;
+    try {
+      final selectedUri = await FilePicker.pickDirectory(
+        dialogTitle: 'Select Music Folder',
+      );
+      if (selectedUri == null) return null;
+      final resolved = selectedUri.scheme == 'file'
+          ? selectedUri.toFilePath()
+          : selectedUri.toString();
+      if (resolved.isEmpty) return null;
+      await LibraryDatabase.instance.addFolderRule(resolved, 'watched');
+      return resolved;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Track>> scanLibrary() async {

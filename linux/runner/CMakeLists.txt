@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(runner LANGUAGES CXX)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
+
 add_executable(${BINARY_NAME}
   "main.cc"
   "my_application.cc"

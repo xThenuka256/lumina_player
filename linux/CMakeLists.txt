@@ -5,6 +5,7 @@ set(BINARY_NAME "lumina_player")
 
 cmake_policy(SET CMP0063 NEW)
 cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0087 NEW)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 

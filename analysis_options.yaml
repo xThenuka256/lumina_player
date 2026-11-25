@@ -1,5 +1,11 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # Flutter 3.47+ deprecated package:flutter/material.dart in favor of material_ui;
+    # keep compatibility across stable Flutter 3.x toolchains.
+    deprecated_member_use: ignore
+
 linter:
   rules:
     prefer_const_constructors: true
