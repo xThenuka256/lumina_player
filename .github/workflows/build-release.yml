@@ -127,7 +127,13 @@ jobs:
           mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/256x256/apps"
           mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/128x128/apps"
 
-          cp -r build/linux/x64/release/bundle/* "$DEB_ROOT/usr/share/${APP_NAME}/"
+          BUNDLE_DIR="$(find build/linux -type d -name bundle | head -n 1)"
+          if [ -z "$BUNDLE_DIR" ] || [ ! -d "$BUNDLE_DIR" ]; then
+            echo "Could not locate Linux release bundle directory under build/linux"
+            find build/linux -maxdepth 4
+            exit 1
+          fi
+          cp -r "${BUNDLE_DIR}/"* "$DEB_ROOT/usr/share/${APP_NAME}/"
           chmod 755 "$DEB_ROOT/usr/share/${APP_NAME}/${APP_NAME}"
           ln -s "/usr/share/${APP_NAME}/${APP_NAME}" "$DEB_ROOT/usr/bin/${APP_NAME}"
 
