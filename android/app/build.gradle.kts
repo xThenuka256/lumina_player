@@ -14,10 +14,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
     defaultConfig {
         applicationId = "dev.lumina.player"
         // Android 11 (API 30) minimum through Android 15 (API 35)
@@ -44,6 +40,12 @@ android {
             pickFirsts.add("lib/*/libmpv.so")
             pickFirsts.add("lib/*/libplacebo.so")
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
