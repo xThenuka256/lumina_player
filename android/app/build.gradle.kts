@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "dev.lumina.player"
-    compileSdk = 35
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.lumina.player"
-        // Android 11 (API 30) minimum through Android 15 (API 35)
+        // Android 11 (API 30) minimum
         minSdk = 30
         targetSdk = 35
         versionCode = flutter.versionCode
