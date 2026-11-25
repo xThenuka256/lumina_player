@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Lumina Player
+Comment=Liquid Glass Local Music Player
+Exec=/usr/bin/lumina_player %U
+Icon=lumina_player
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Music;Player;
+StartupWMClass=dev.lumina.player
+Keywords=music;audio;player;mp3;flac;

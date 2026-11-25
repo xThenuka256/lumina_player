@@ -1,0 +1,192 @@
+name: Build & Release Lumina Player
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK (API 30+)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Ensure Android Gradle wrapper binary exists
+        run: |
+          if [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            flutter create --org dev.lumina --project-name lumina_player --platforms=android /tmp/bootstrap_android
+            cp /tmp/bootstrap_android/android/gradlew android/gradlew
+            cp /tmp/bootstrap_android/android/gradlew.bat android/gradlew.bat
+            cp /tmp/bootstrap_android/android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.jar
+            chmod +x android/gradlew
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze & test
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build Android split-per-abi APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build Android universal APK
+        run: flutter build apk --release
+
+      - name: Collect Android APK outputs
+        run: |
+          mkdir -p dist/android
+          cp build/app/outputs/flutter-apk/*.apk dist/android/
+          ls -lh dist/android/
+
+      - name: Upload Android APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumina-player-android-apks
+          path: dist/android/*.apk
+          if-no-files-found: error
+
+  build-linux-deb:
+    name: Build Linux x86_64 (.deb)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            libmpv-dev \
+            mpv \
+            dpkg-dev \
+            librsvg2-bin
+
+      - name: Set up Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Ensure Linux Flutter managed CMake files exist
+        run: |
+          if [ ! -f linux/flutter/CMakeLists.txt ]; then
+            flutter create --org dev.lumina --project-name lumina_player --platforms=linux /tmp/bootstrap_linux
+            mkdir -p linux/flutter
+            cp -r /tmp/bootstrap_linux/linux/flutter/* linux/flutter/
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux release bundle
+        run: flutter build linux --release
+
+      - name: Package .deb installer
+        run: |
+          APP_NAME="lumina_player"
+          PKG_NAME="lumina-player"
+          RAW_VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)"
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="$RAW_VERSION"
+          fi
+
+          DEB_ROOT="build/deb/${PKG_NAME}_${VERSION}_amd64"
+          rm -rf "$DEB_ROOT"
+          mkdir -p "$DEB_ROOT/DEBIAN"
+          mkdir -p "$DEB_ROOT/usr/share/${APP_NAME}"
+          mkdir -p "$DEB_ROOT/usr/bin"
+          mkdir -p "$DEB_ROOT/usr/share/applications"
+          mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps"
+          mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/256x256/apps"
+          mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/128x128/apps"
+
+          cp -r build/linux/x64/release/bundle/* "$DEB_ROOT/usr/share/${APP_NAME}/"
+          chmod 755 "$DEB_ROOT/usr/share/${APP_NAME}/${APP_NAME}"
+          ln -s "/usr/share/${APP_NAME}/${APP_NAME}" "$DEB_ROOT/usr/bin/${APP_NAME}"
+
+          cp linux/packaging/lumina_player.desktop "$DEB_ROOT/usr/share/applications/dev.lumina.player.desktop"
+          cp linux/packaging/lumina_player.svg "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/${APP_NAME}.svg"
+          rsvg-convert -w 256 -h 256 linux/packaging/lumina_player.svg -o "$DEB_ROOT/usr/share/icons/hicolor/256x256/apps/${APP_NAME}.png"
+          rsvg-convert -w 128 -h 128 linux/packaging/lumina_player.svg -o "$DEB_ROOT/usr/share/icons/hicolor/128x128/apps/${APP_NAME}.png"
+
+          INSTALLED_SIZE=$(du -sk "$DEB_ROOT/usr" | awk '{print $1}')
+
+          cat <<EOF > "$DEB_ROOT/DEBIAN/control"
+          Package: ${PKG_NAME}
+          Version: ${VERSION}
+          Section: sound
+          Priority: optional
+          Architecture: amd64
+          Installed-Size: ${INSTALLED_SIZE}
+          Depends: libgtk-3-0, libmpv2
+          Recommends: zenity
+          Maintainer: Lumina Team <maintainers@lumina.dev>
+          Description: Liquid Glass Local Music Player for Linux
+           Lumina Player is a cross-platform local music player built with Flutter
+           and libmpv, featuring dynamic album-art mesh gradients, MPRIS D-Bus
+           media controls, and SQLite library caching.
+          EOF
+
+          mkdir -p dist/linux
+          dpkg-deb --build --root-owner-group "$DEB_ROOT" "dist/linux/${PKG_NAME}_${VERSION}_amd64.deb"
+          dpkg-deb --info "dist/linux/${PKG_NAME}_${VERSION}_amd64.deb"
+
+      - name: Upload Linux .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumina-player-linux-deb
+          path: dist/linux/*.deb
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-linux-deb]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Android APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: lumina-player-android-apks
+          path: release-assets
+
+      - name: Download Linux .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: lumina-player-linux-deb
+          path: release-assets
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-assets/*
